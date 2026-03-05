@@ -1,0 +1,15 @@
+services:
+  strava-mcp:
+    build: .
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - PORT=3000
+      - MCP_TRANSPORT=sse
+      - STRAVA_CLIENT_ID=${STRAVA_CLIENT_ID}
+      - STRAVA_CLIENT_SECRET=${STRAVA_CLIENT_SECRET}
+      - STRAVA_REFRESH_TOKEN=${STRAVA_REFRESH_TOKEN}
+      - STRAVA_ACCESS_TOKEN=${STRAVA_ACCESS_TOKEN}
+    volumes:
+      - ~/.config/strava-mcp:/root/.config/strava-mcp
+    restart: always

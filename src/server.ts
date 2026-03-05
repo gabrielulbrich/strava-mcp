@@ -29,8 +29,11 @@ import { getAllActivities } from './tools/getAllActivities.js';
 import { getActivityPhotosTool } from './tools/getActivityPhotos.js';
 import { getServerVersionTool } from "./tools/getServerVersion.js";
 import { planNextWeekTool } from "./tools/planNextWeek.js";
+import { PlannerService } from "./services/plannerService.js";
 import { connectStravaTool, disconnectStravaTool, checkStravaConnectionTool } from './tools/connectStrava.js';
 import { loadConfig } from './config.js';
+import swaggerUi from "swagger-ui-express";
+import swaggerJsdoc from "swagger-jsdoc";
 
 // Import the actual client function
 // import {
@@ -244,12 +247,14 @@ export function formatDuration(seconds: number): string {
 
 // Removed other formatters - they are now local to their respective tools.
 
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import express from "express";
+
+// ... (existing helper function formatDuration if still there)
+
 // --- Server Startup ---
 async function startServer() {
   try {
-        console.error(`Starting ${SERVER_NAME} v${serverVersion}...`);
-        
-        // Load config from ~/.config/strava-mcp/ and merge with env vars
         const config = await loadConfig();
         if (config.accessToken && !process.env.STRAVA_ACCESS_TOKEN) {
             process.env.STRAVA_ACCESS_TOKEN = config.accessToken;
@@ -263,10 +268,102 @@ async function startServer() {
         if (config.clientSecret && !process.env.STRAVA_CLIENT_SECRET) {
             process.env.STRAVA_CLIENT_SECRET = config.clientSecret;
         }
-        
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-        console.error(`${SERVER_NAME} v${serverVersion} connected via Stdio. Tools registered.`);
+
+        const transportType = process.env.MCP_TRANSPORT || (process.env.PORT ? 'sse' : 'stdio');
+
+        if (transportType === 'sse') {
+            const app = express();
+            const port = process.env.PORT || 3000;
+
+            // Swagger configuration
+            const swaggerOptions = {
+                definition: {
+                    openapi: "3.0.0",
+                    info: {
+                        title: "Strava MCP API",
+                        version: serverVersion,
+                        description: "API for Strava MCP tools",
+                    },
+                    servers: [
+                        {
+                            url: `http://localhost:${port}`,
+                        },
+                    ],
+                },
+                apis: [fileURLToPath(import.meta.url)], // Document this file
+            };
+
+            const swaggerDocs = swaggerJsdoc(swaggerOptions);
+            app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
+            let sseTransport: SSEServerTransport | undefined;
+
+            /**
+             * @openapi
+             * /api/plan-next-week:
+             *   post:
+             *     summary: Analyzes recent runs and plans the next week.
+             *     tags: [Planner]
+             *     requestBody:
+             *       required: true
+             *       content:
+             *         application/json:
+             *           schema:
+             *             type: object
+             *             properties:
+             *               numberOfRuns:
+             *                 type: integer
+             *                 default: 5
+             *               weekStartDate:
+             *                 type: string
+             *                 format: date
+             *                 example: "2026-03-09"
+             *     responses:
+             *       200:
+             *         description: Returns the analysis and week plan.
+             *       500:
+             *         description: Internal server error.
+             */
+            app.post("/api/plan-next-week", express.json(), async (req, res) => {
+                const { numberOfRuns, weekStartDate } = req.body;
+                const token = process.env.STRAVA_ACCESS_TOKEN;
+
+                if (!token) {
+                    return res.status(500).json({ error: "STRAVA_ACCESS_TOKEN not configured" });
+                }
+
+                try {
+                    const result = await PlannerService.planNextWeek(token, numberOfRuns || 5, weekStartDate);
+                    res.json(result);
+                } catch (error) {
+                    res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+                }
+            });
+
+            app.get("/sse", async (_req, res) => {
+                console.error("[INFO] New SSE connection established");
+                sseTransport = new SSEServerTransport("/messages", res);
+                await server.connect(sseTransport);
+            });
+
+            app.post("/messages", async (req, res) => {
+                if (sseTransport) {
+                    await sseTransport.handlePostMessage(req, res);
+                } else {
+                    console.error("[ERROR] Post received but no SSE session active. Use GET /sse first.");
+                    res.status(400).send("SSE connection not established. Please connect to /sse first.");
+                }
+            });
+
+            app.listen(port, () => {
+                console.error(`[INFO] SSE Server running on http://localhost:${port}/sse`);
+                console.error(`[INFO] POST messages to http://localhost:${port}/messages`);
+            });
+        } else {
+            const transport = new StdioServerTransport();
+            await server.connect(transport);
+            console.error(`${SERVER_NAME} v${serverVersion} connected via Stdio. Tools registered.`);
+        }
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1);
