@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "strava": {
+      "command": "node",
+      "args": [
+        "/Users/gabriel.ulbrich/lab/strava-mcp/dist/server.js"
+      ]
+    }
+  }
+}

@@ -35,6 +35,13 @@ const StravaActivitySchema = z.object({
     type: z.string().optional(),
     sport_type: z.string().optional(),
     moving_time: z.number().int().optional(),
+    elapsed_time: z.number().int().optional(),
+    total_elevation_gain: z.number().optional(),
+    average_speed: z.number().optional(),
+    max_speed: z.number().optional(),
+    has_heartrate: z.boolean().optional(),
+    average_heartrate: z.number().optional(),
+    max_heartrate: z.number().optional(),
 });
 
 // Define the expected response structure for the activities endpoint

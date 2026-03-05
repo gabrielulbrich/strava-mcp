@@ -28,6 +28,7 @@ import { getAthleteZonesTool } from './tools/getAthleteZones.js';
 import { getAllActivities } from './tools/getAllActivities.js';
 import { getActivityPhotosTool } from './tools/getActivityPhotos.js';
 import { getServerVersionTool } from "./tools/getServerVersion.js";
+import { planNextWeekTool } from "./tools/planNextWeek.js";
 import { connectStravaTool, disconnectStravaTool, checkStravaConnectionTool } from './tools/connectStrava.js';
 import { loadConfig } from './config.js';
 
@@ -210,6 +211,14 @@ server.tool(
     checkStravaConnectionTool.description,
     {},
     checkStravaConnectionTool.execute
+);
+
+// --- Register plan-next-week tool ---
+server.tool(
+    planNextWeekTool.name,
+    planNextWeekTool.description,
+    planNextWeekTool.inputSchema?.shape ?? {},
+    planNextWeekTool.execute
 );
 
 // --- Helper Functions ---
