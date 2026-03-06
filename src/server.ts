@@ -66,13 +66,13 @@ server.tool(
     getAthleteProfile.execute
 );
 server.tool(
-    getAthleteStatsTool.name, 
+    getAthleteStatsTool.name,
     getAthleteStatsTool.description,
     getAthleteStatsTool.inputSchema?.shape ?? {},
     getAthleteStatsTool.execute
 );
 server.tool(
-    getActivityDetailsTool.name, 
+    getActivityDetailsTool.name,
     getActivityDetailsTool.description,
     getActivityDetailsTool.inputSchema?.shape ?? {},
     getActivityDetailsTool.execute
@@ -96,7 +96,7 @@ server.tool(
     listStarredSegments.execute
 );
 server.tool(
-    getSegmentTool.name, 
+    getSegmentTool.name,
     getSegmentTool.description,
     getSegmentTool.inputSchema?.shape ?? {},
     getSegmentTool.execute
@@ -114,19 +114,19 @@ server.tool(
     starSegment.execute
 );
 server.tool(
-    getSegmentEffortTool.name, 
+    getSegmentEffortTool.name,
     getSegmentEffortTool.description,
     getSegmentEffortTool.inputSchema?.shape ?? {},
     getSegmentEffortTool.execute
 );
 server.tool(
-    listSegmentEffortsTool.name, 
+    listSegmentEffortsTool.name,
     listSegmentEffortsTool.description,
     listSegmentEffortsTool.inputSchema?.shape ?? {},
     listSegmentEffortsTool.execute
 );
 server.tool(
-    listAthleteRoutesTool.name, 
+    listAthleteRoutesTool.name,
     listAthleteRoutesTool.description,
     listAthleteRoutesTool.inputSchema?.shape ?? {},
     listAthleteRoutesTool.execute
@@ -158,7 +158,7 @@ server.tool(
 
 // --- Register get-activity-laps tool (Simplified) ---
 server.tool(
-    getActivityLapsTool.name, 
+    getActivityLapsTool.name,
     getActivityLapsTool.description,
     getActivityLapsTool.inputSchema?.shape ?? {},
     getActivityLapsTool.execute
@@ -166,7 +166,7 @@ server.tool(
 
 // --- Register get-athlete-zones tool ---
 server.tool(
-    getAthleteZonesTool.name, 
+    getAthleteZonesTool.name,
     getAthleteZonesTool.description,
     getAthleteZonesTool.inputSchema?.shape ?? {},
     getAthleteZonesTool.execute
@@ -254,7 +254,7 @@ import express from "express";
 
 // --- Server Startup ---
 async function startServer() {
-  try {
+    try {
         const config = await loadConfig();
         if (config.accessToken && !process.env.STRAVA_ACCESS_TOKEN) {
             process.env.STRAVA_ACCESS_TOKEN = config.accessToken;
@@ -273,6 +273,17 @@ async function startServer() {
 
         if (transportType === 'sse') {
             const app = express();
+            // Allow requests from the frontend
+            app.use((req, res, next) => {
+                res.header("Access-Control-Allow-Origin", "http://localhost:5173");
+                res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+                res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+                if (req.method === "OPTIONS") {
+                    res.sendStatus(201);
+                    return;
+                }
+                next();
+            });
             const port = process.env.PORT || 3000;
 
             // Swagger configuration
@@ -282,7 +293,7 @@ async function startServer() {
                     info: {
                         title: "Strava MCP API",
                         version: serverVersion,
-                        description: "API for Strava MCP tools",
+                        description: "API for Strava MCPPP tools",
                     },
                     servers: [
                         {
@@ -325,6 +336,7 @@ async function startServer() {
              *         description: Internal server error.
              */
             app.post("/api/plan-next-week", express.json(), async (req, res) => {
+                console.log("[INFO] Received request to plan next week");
                 const { numberOfRuns, weekStartDate } = req.body;
                 const token = process.env.STRAVA_ACCESS_TOKEN;
 
@@ -364,10 +376,10 @@ async function startServer() {
             await server.connect(transport);
             console.error(`${SERVER_NAME} v${serverVersion} connected via Stdio. Tools registered.`);
         }
-  } catch (error) {
-    console.error("Failed to start server:", error);
-    process.exit(1);
-  }
+    } catch (error) {
+        console.error("Failed to start server:", error);
+        process.exit(1);
+    }
 }
 
 startServer();

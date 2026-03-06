@@ -1,6 +1,8 @@
 services:
   strava-mcp:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     ports:
       - "${PORT:-3000}:3000"
     environment:
@@ -10,6 +12,9 @@ services:
       - STRAVA_CLIENT_SECRET=${STRAVA_CLIENT_SECRET}
       - STRAVA_REFRESH_TOKEN=${STRAVA_REFRESH_TOKEN}
       - STRAVA_ACCESS_TOKEN=${STRAVA_ACCESS_TOKEN}
+      - NODE_ENV=development
     volumes:
+      - .:/app
+      - /app/node_modules
       - ~/.config/strava-mcp:/root/.config/strava-mcp
     restart: always
